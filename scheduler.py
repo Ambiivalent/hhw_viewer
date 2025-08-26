@@ -22,6 +22,7 @@ class Scheduler:
         # Return:
         #   data = {core_name -> str: temperature -> int}
         # CPU metrics can only be gathered in Admin mode
+        self.c.Open()
         data = []
         cpu = self.c.Hardware[0]
         cpuSensor = self.c.Hardware[0].Sensors
@@ -33,6 +34,7 @@ class Scheduler:
                     'value':sensor.Value
                 })
                 # print('temp:', sensor.Name, ":", sensor.Value)
+        self.c.Close()
 
         return data
 
@@ -40,6 +42,7 @@ class Scheduler:
         # Return GPU Core and Temperature with sensor.
         # Return:
         #   data = {core_name -> str: temperature -> int}
+        self.c.Open()
         data = []
         gpu = self.c.Hardware[1]
         gpuSensor = self.c.Hardware[1].Sensors
@@ -52,15 +55,14 @@ class Scheduler:
                     'value':sensor.Value
                 })
                 # print('temp:', sensor.Name, ":", sensor.Value)
+        self.c.Close()
 
         return data
 
     def fetch(self):
         # Fetch all relevant metrics and return in tuple
         # Return
-        #   (metrics...)
-        self.c.Open()
-        
+        #   (metrics...)        
         CPUInfo = self.getCPUMetrics()
         GPUInfo = self.getGPUMetrics()
 
