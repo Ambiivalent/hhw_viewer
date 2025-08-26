@@ -4,9 +4,13 @@ Real time application that measures CPU and GPU temperatures and displays visual
 
 # Dependencies
 
-`pip install pythonnet`
-`pip install plotly`
-`LibreHardwareMonitorLib.dll`
+```
+pip install pythonnet
+pip install plotly
+pip install pandas
+pip install dash
+LibreHardwareMonitorLib.dll
+```
 
 # Curernt Status
 WIP
