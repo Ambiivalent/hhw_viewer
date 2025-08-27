@@ -1,0 +1,29 @@
+@font-face {
+    font-family: "IBM_MDA";
+    src: url(font/Px437_IBM_MDA.ttf);
+}
+
+h1, h2 {
+    font-weight: normal;
+}
+
+body {
+    font-family: "IBM_MDA";
+    background-color: oklch(26.9% 0 0);
+    color:oklch(92.2% 0 0);
+    line-height: 1.6;
+}
+
+.graphBox {
+    border: 2px solid whitesmoke;
+    flex: auto;
+    justify-self: center;
+}
+
+.statBox {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-self: center;
+    justify-items: center;
+    padding: 5px;
+}

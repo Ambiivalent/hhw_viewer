@@ -16,6 +16,15 @@ class Scheduler:
         self.c.IsGpuEnabled = True
         
         self.dataPoints = {}
+        self.statistics = {
+            "average": 0,
+            "peak": 0,
+            "dataPoints": 0
+        }
+        self.c.Open()
+        self.CPU = self.c.Hardware[0].Name
+        self.GPU = self.c.Hardware[1].Name
+        self.c.Close()
 
     def getCPUMetrics(self):
         # Return CPU Core and Temperature with sensor.
@@ -77,8 +86,12 @@ class Scheduler:
             core = updates['name']
             if core in self.dataPoints:
                 self.dataPoints[core].append(updates['value'])
+                # update average and peak
             else:
                 self.dataPoints[core] = [updates['value']]
+            self.statistics['average'] += updates['value']
+            if self.statistics['peak'] < updates['value']: self.statistics['peak'] = updates['value']
+            self.statistics['dataPoints'] += 1
 
 
     def buildGraph(self, n_intervals):
@@ -98,22 +111,55 @@ class Scheduler:
         # Update layout
         fig.update_layout(
             height=600,
-            width=800,
+            width=1000,
             title_text="Temperature Readings by Component"
         )
 
+        fig.update_layout(
+            font=dict(family="Courier New", size=12, color='whitesmoke'),
+            paper_bgcolor = '#202020'
+        )
+
         return fig
+    
+    def getStats(self, n_intervals):
+        return html.P(f"Average: {self.statistics['average'] // self.statistics['dataPoints']}°C, Peak:{self.statistics['peak']}°C")
 
     def run(self):
         # Run Dash App and update data in real time
         # build real time app
-        app = Dash()
+        app = dash.Dash(__name__)
 
         app.layout = html.Div([
             html.H1(children='HHW Viewer', style={'textAlign':'center'}),
             html.H2(children='Heatwave Hardware Viewer', style={'textAlign':'center'}),
             html.P(children='Analyze CPU and GPU temperatures in Real Time', style={'textAlign':'center'}),
-            dcc.Graph(id='live-update-graph'),
+
+            html.Div(
+                children=[
+                    html.P(f"CPU: {self.CPU}"),
+                    html.P(f"GPU: {self.GPU}"),
+                ],
+                className="statBox"
+            ),
+
+            # plotly starts here
+            html.Div(
+                children=dcc.Graph(id='live-update-graph'),
+                className="graphBox"
+            ),
+
+            html.Div(
+                children=[
+                    html.P("Statistics"),
+                    html.Div(
+                        id="live-update-stats"
+                    )
+                ],
+                className="statBox",
+                id="stats-screen"
+            ),
+            
             dcc.Interval(
                 id='interval-component',
                 interval= self.frequency * 1000, # convert s->ms
@@ -126,6 +172,11 @@ class Scheduler:
             Output('live-update-graph', 'figure'),
             Input('interval-component', 'n_intervals')
         )(self.buildGraph)
+
+        app.callback(
+            Output('live-update-stats', 'children'),
+            Input('interval-component', 'n_intervals')
+        )(self.getStats)
         
 
         app.run(debug=True)
