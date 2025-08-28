@@ -27,3 +27,14 @@ body {
     justify-items: center;
     padding: 5px;
 }
+
+.inputDiv {
+    display: flex;
+    justify-self: center;
+}
+
+.error-msg {
+    display: flex;
+    justify-self: center;
+    color: red;
+}

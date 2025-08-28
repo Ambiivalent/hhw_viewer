@@ -21,17 +21,18 @@ class Scheduler:
             "peak": 0,
             "dataPoints": 0
         }
+        self.userParams = {
+            "peakAlert": 80 # set default peak alert for 80C
+        }
         self.c.Open()
         self.CPU = self.c.Hardware[0].Name
         self.GPU = self.c.Hardware[1].Name
-        self.c.Close()
 
     def getCPUMetrics(self):
         # Return CPU Core and Temperature with sensor.
         # Return:
         #   data = {core_name -> str: temperature -> int}
         # CPU metrics can only be gathered in Admin mode
-        self.c.Open()
         data = []
         cpu = self.c.Hardware[0]
         cpuSensor = self.c.Hardware[0].Sensors
@@ -43,7 +44,6 @@ class Scheduler:
                     'value':sensor.Value
                 })
                 # print('temp:', sensor.Name, ":", sensor.Value)
-        self.c.Close()
 
         return data
 
@@ -51,7 +51,6 @@ class Scheduler:
         # Return GPU Core and Temperature with sensor.
         # Return:
         #   data = {core_name -> str: temperature -> int}
-        self.c.Open()
         data = []
         gpu = self.c.Hardware[1]
         gpuSensor = self.c.Hardware[1].Sensors
@@ -64,7 +63,6 @@ class Scheduler:
                     'value':sensor.Value
                 })
                 # print('temp:', sensor.Name, ":", sensor.Value)
-        self.c.Close()
 
         return data
 
@@ -102,7 +100,7 @@ class Scheduler:
             row, col = row_col_map[i]
 
             fig.add_trace(
-                go.Line(x=pd.Series(range(len(value))), y=value, name=key),
+                go.Scatter(x=pd.Series(range(len(value))), y=value, name=key, mode='lines'),
                 row=row, col=col
             )
             fig.update_xaxes(title_text="Time (s)", row=row, col=col)
@@ -123,8 +121,22 @@ class Scheduler:
         return fig
     
     def getStats(self, n_intervals):
-        return html.P(f"Average: {self.statistics['average'] // self.statistics['dataPoints']}°C, Peak:{self.statistics['peak']}°C")
+        if self.statistics['average'] != 0:
+            return html.P(f"Average: {self.statistics['average'] // self.statistics['dataPoints']}°C, Peak:{self.statistics['peak']:.2f}°C")
 
+    def updatePeak(self, temperature):
+        self.userParams['peakAlert'] = temperature
+    
+    def checkPeakTemp(self, n_intervals):
+        # Check for temperature past peak to alert users
+        if self.userParams['peakAlert'] and self.statistics['peak'] and self.userParams['peakAlert'] < self.statistics['peak']:
+            return html.P("Warning -> Peak Temperature Exceeded")
+        return None
+    
+    def pruneWindow(self):
+        # todo: set a section of graph to update - reduce memoru usage
+        return
+            
     def run(self):
         # Run Dash App and update data in real time
         # build real time app
@@ -159,6 +171,18 @@ class Scheduler:
                 className="statBox",
                 id="stats-screen"
             ),
+
+            html.Div([
+                "Alert on Target Temperature: ",
+                dcc.Input(id='target-temp-alert', value=self.userParams['peakAlert'], type='number')
+            ],
+            className="inputDiv"
+            ),
+
+            html.Div(
+                id='on-rising-temp',
+                className="error-msg",
+            ),
             
             dcc.Interval(
                 id='interval-component',
@@ -177,6 +201,18 @@ class Scheduler:
             Output('live-update-stats', 'children'),
             Input('interval-component', 'n_intervals')
         )(self.getStats)
+
+        app.callback(
+            Input('target-temp-alert', 'value')
+        )(self.updatePeak)
+
+        app.callback(
+            Output('on-rising-temp', 'children'),
+            Input('target-temp-alert', 'value')
+        )(self.checkPeakTemp)
+
+
+        
         
 
         app.run(debug=True)

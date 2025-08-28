@@ -20,4 +20,4 @@ Program must be ran in administrator mode. LibreHardwareMonitorLib can't detect 
 Tested on AMD CPU and NVIDIA GPU
 
 # Curernt Status
-v1.0.0
+v1.0.1
