@@ -19,10 +19,12 @@ class Scheduler:
         self.statistics = {
             "average": 0,
             "peak": 0,
-            "dataPoints": 0
+            "dataPoints": 0,
+            'time': 0
         }
         self.userParams = {
-            "peakAlert": 80 # set default peak alert for 80C
+            "peakAlert": 80, # set default peak alert for 80C
+            "dataPointsToKeep": 60 # set default window for data
         }
         self.c.Open()
         self.CPU = self.c.Hardware[0].Name
@@ -94,6 +96,7 @@ class Scheduler:
 
     def buildGraph(self, n_intervals):
         self.registerData()
+        self.statistics['time'] += 1
         fig = make_subplots(rows=2, cols=2, subplot_titles=list(self.dataPoints.keys()))
         row_col_map = [(1, 1), (1, 2), (2, 1), (2, 2)]
         for i, (key, value) in enumerate(self.dataPoints.items()):
@@ -120,11 +123,14 @@ class Scheduler:
 
         return fig
     
-    def getStats(self, n_intervals):
+    def statsHandler(self, n_intervals):
+        # get and update stats
         if self.statistics['average'] != 0:
             return html.P(f"Average: {self.statistics['average'] // self.statistics['dataPoints']}°C, Peak:{self.statistics['peak']:.2f}°C")
+        
 
-    def updatePeak(self, temperature):
+    def updateData(self, temperature):
+        # update Input Data
         self.userParams['peakAlert'] = temperature
     
     def checkPeakTemp(self, n_intervals):
@@ -132,10 +138,19 @@ class Scheduler:
         if self.userParams['peakAlert'] and self.statistics['peak'] and self.userParams['peakAlert'] < self.statistics['peak']:
             return html.P("Warning -> Peak Temperature Exceeded")
         return None
+
+    def windowHandler(self, n_intervals):
+        if self.statistics['time'] > self.userParams['dataPointsToKeep']:
+            # prune data window
+            self.statistics['time'] -= 1
+            self.pruneWindow()
     
     def pruneWindow(self):
-        # todo: set a section of graph to update - reduce memoru usage
-        return
+        # prune data windows to keep only last 60 data points
+        # save memory
+        # logic: will always start below 60 - when at 60 remove first element
+        for data in self.dataPoints:
+            self.dataPoints[data] = self.dataPoints[data][1:]
             
     def run(self):
         # Run Dash App and update data in real time
@@ -200,11 +215,15 @@ class Scheduler:
         app.callback(
             Output('live-update-stats', 'children'),
             Input('interval-component', 'n_intervals')
-        )(self.getStats)
+        )(self.statsHandler)
+
+        app.callback(
+            Input('interval-component', 'n_intervals')
+        )(self.windowHandler)
 
         app.callback(
             Input('target-temp-alert', 'value')
-        )(self.updatePeak)
+        )(self.updateData)
 
         app.callback(
             Output('on-rising-temp', 'children'),
